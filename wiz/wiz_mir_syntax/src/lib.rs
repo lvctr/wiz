@@ -1,3 +1,6 @@
+pub mod span;
+pub mod token;
+
 #[cfg(test)]
 mod tests {
     #[test]
