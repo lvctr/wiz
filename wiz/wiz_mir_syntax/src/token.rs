@@ -183,10 +183,34 @@ impl Token {
                 _ => return None,
             },
 
-            TokenKind::Le | TokenKind::EqEq | TokenKind::Ne | TokenKind::Ge | TokenKind::AndAnd | TokenKind::OrOr | TokenKind::Tilde | TokenKind::BinOpEq(..) | TokenKind::At | TokenKind::DotDotDot
-            | TokenKind::DotDotEq | TokenKind::Comma | TokenKind::Semi | TokenKind::ModSep | TokenKind::RArrow | TokenKind::LArrow | TokenKind::FatArrow | TokenKind::Pound | TokenKind::Dollar
-            | TokenKind::Question | TokenKind::OpenDelim(..) | TokenKind::CloseDelim(..) | TokenKind::Literal(..) | TokenKind::Ident(..)
-            | TokenKind::Lifetime | TokenKind::Interpolated | TokenKind::DocComment(..) | TokenKind::Eof => return None,
+            TokenKind::Le
+            | TokenKind::EqEq
+            | TokenKind::Ne
+            | TokenKind::Ge
+            | TokenKind::AndAnd
+            | TokenKind::OrOr
+            | TokenKind::Tilde
+            | TokenKind::BinOpEq(..)
+            | TokenKind::At
+            | TokenKind::DotDotDot
+            | TokenKind::DotDotEq
+            | TokenKind::Comma
+            | TokenKind::Semi
+            | TokenKind::ModSep
+            | TokenKind::RArrow
+            | TokenKind::LArrow
+            | TokenKind::FatArrow
+            | TokenKind::Pound
+            | TokenKind::Dollar
+            | TokenKind::Question
+            | TokenKind::OpenDelim(..)
+            | TokenKind::CloseDelim(..)
+            | TokenKind::Literal(..)
+            | TokenKind::Ident(..)
+            | TokenKind::Lifetime
+            | TokenKind::Interpolated
+            | TokenKind::DocComment(..)
+            | TokenKind::Eof => return None,
         };
 
         Some(Token::new(kind, self.span.to(&joint.span)))
