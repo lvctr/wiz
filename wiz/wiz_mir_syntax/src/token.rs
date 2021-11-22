@@ -1,10 +1,12 @@
 use crate::span::{Span, DUMMY_SPAN};
 
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum CommentKind {
     Line,
     Block,
 }
 
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum BinOpToken {
     Plus,
     Minus,
@@ -18,6 +20,7 @@ pub enum BinOpToken {
     Shr,
 }
 
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum LitKind {
     Bool,
     Byte,
@@ -31,6 +34,7 @@ pub enum LitKind {
     Err,
 }
 
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum DelimToken {
     /// A round parenthesis (i.e., `(` or `)`).
     Paren,
@@ -151,3 +155,9 @@ pub type TreeAndSpacing = (TokenTree, Spacing);
 
 #[derive(Default)]
 pub struct TokenStream(pub Vec<TreeAndSpacing>);
+
+impl TokenStream {
+    pub fn new(stream: Vec<TreeAndSpacing>) -> Self {
+        Self(stream)
+    }
+}
