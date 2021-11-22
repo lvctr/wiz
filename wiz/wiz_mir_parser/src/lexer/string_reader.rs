@@ -6,5 +6,5 @@ pub struct StringReader<'a> {
     /// Stop reading src at this position
     pub(crate) end_src_index: usize,
     /// Target src
-    pub(crate) src: &'a str
+    pub(crate) src: &'a str,
 }

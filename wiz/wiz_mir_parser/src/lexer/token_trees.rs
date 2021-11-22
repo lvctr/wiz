@@ -1,8 +1,8 @@
+use crate::lexer::string_reader::StringReader;
 use std::collections::HashMap;
 use wiz_mir_syntax::span::Span;
 use wiz_mir_syntax::token;
 use wiz_mir_syntax::token::Token;
-use crate::lexer::string_reader::StringReader;
 
 pub struct UnmatchedBrace {
     pub expected_delim: token::DelimToken,
@@ -40,7 +40,7 @@ impl<'a> From<StringReader<'a>> for TokenTreeReader<'a> {
             matching_delim_spans: vec![],
             last_unclosed_found_span: None,
             last_delim_empty_block_spans: Default::default(),
-            matching_block_spans: vec![]
+            matching_block_spans: vec![],
         }
     }
 }

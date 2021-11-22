@@ -12,9 +12,7 @@ impl Display for ParseError {
     }
 }
 
-impl Error for ParseError {
-
-}
+impl Error for ParseError {}
 
 impl From<String> for ParseError {
     fn from(message: String) -> Self {

@@ -1,19 +1,12 @@
-pub mod parser;
-pub mod lexer;
 pub mod error;
+pub mod lexer;
+pub mod parser;
 
-pub fn maybe_file_to_parser() {
+pub fn maybe_file_to_parser() {}
 
-}
+pub fn maybe_file_to_stream() {}
 
-pub fn maybe_file_to_stream() {
-
-}
-
-pub fn stream_to_parser() {
-
-}
-
+pub fn stream_to_parser() {}
 
 #[cfg(test)]
 mod tests {
