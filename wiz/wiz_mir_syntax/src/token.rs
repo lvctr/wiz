@@ -124,3 +124,20 @@ pub enum Spacing {
     Alone,
     Joint,
 }
+
+pub enum TokenTree {
+    /// A single token.
+    Token(Token),
+    /// A delimited sequence of token trees.
+    Delimited(DelimSpan, DelimToken, TokenStream),
+}
+
+pub struct DelimSpan {
+    pub open: Span,
+    pub close: Span,
+}
+
+pub type TreeAndSpacing = (TokenTree, Spacing);
+
+#[derive(Default)]
+pub struct TokenStream(pub Vec<TreeAndSpacing>);
