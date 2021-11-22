@@ -1,4 +1,4 @@
-use crate::span::Span;
+use crate::span::{DUMMY_SPAN, Span};
 
 pub enum CommentKind {
     Line,
@@ -118,6 +118,18 @@ pub enum AttrStyle {
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
+}
+
+impl Token {
+    pub fn new(kind: TokenKind, span: Span) -> Self {
+        Self {
+            kind, span
+        }
+    }
+
+    pub fn dummy() -> Self {
+        Self::new(TokenKind::Question, DUMMY_SPAN)
+    }
 }
 
 pub enum Spacing {
