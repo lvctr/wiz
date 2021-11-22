@@ -132,6 +132,65 @@ impl Token {
     pub fn dummy() -> Self {
         Self::new(TokenKind::Question, DUMMY_SPAN)
     }
+
+    pub fn glue(&self, joint: &Token) -> Option<Token> {
+        let kind = match self.kind {
+            TokenKind::Eq => match joint.kind {
+                TokenKind::Eq => TokenKind::EqEq,
+                TokenKind::Gt => TokenKind::FatArrow,
+                _ => return None,
+            },
+            TokenKind::Lt => match joint.kind {
+                TokenKind::Eq => TokenKind::Le,
+                TokenKind::Lt => TokenKind::BinOp(BinOpToken::Shl),
+                TokenKind::Le => TokenKind::BinOpEq(BinOpToken::Shl),
+                TokenKind::BinOp(BinOpToken::Minus) => TokenKind::LArrow,
+                _ => return None,
+            },
+            TokenKind::Gt => match joint.kind {
+                TokenKind::Eq => TokenKind::Ge,
+                TokenKind::Gt => TokenKind::BinOp(BinOpToken::Shr),
+                TokenKind::Ge => TokenKind::BinOpEq(BinOpToken::Shr),
+                _ => return None,
+            },
+            TokenKind::Not => match joint.kind {
+                TokenKind::Eq => TokenKind::Ne,
+                _ => return None,
+            },
+            TokenKind::BinOp(op) => match joint.kind {
+                TokenKind::Eq => TokenKind::BinOpEq(op),
+                TokenKind::BinOp(BinOpToken::And) if op == BinOpToken::And => TokenKind::AndAnd,
+                TokenKind::BinOp(BinOpToken::Or) if op == BinOpToken::Or => TokenKind::OrOr,
+                TokenKind::Gt if op == BinOpToken::Minus => TokenKind::RArrow,
+                _ => return None,
+            },
+            TokenKind::Dot => match joint.kind {
+                TokenKind::Dot => TokenKind::DotDot,
+                TokenKind::DotDot => TokenKind::DotDotDot,
+                _ => return None,
+            },
+            TokenKind::DotDot => match joint.kind {
+                TokenKind::Dot => TokenKind::DotDotDot,
+                TokenKind::Eq => TokenKind::DotDotEq,
+                _ => return None,
+            },
+            TokenKind::Colon => match joint.kind {
+                TokenKind::Colon => TokenKind::ModSep,
+                _ => return None,
+            },
+            TokenKind::SingleQuote => match joint.kind {
+                TokenKind::Ident(false) => TokenKind::Lifetime,
+                _ => return None,
+            },
+
+            TokenKind::Le | TokenKind::EqEq | TokenKind::Ne | TokenKind::Ge | TokenKind::AndAnd | TokenKind::OrOr | TokenKind::Tilde | TokenKind::BinOpEq(..) | TokenKind::At | TokenKind::DotDotDot
+            | TokenKind::DotDotEq | TokenKind::Comma | TokenKind::Semi | TokenKind::ModSep | TokenKind::RArrow | TokenKind::LArrow | TokenKind::FatArrow | TokenKind::Pound | TokenKind::Dollar
+            | TokenKind::Question | TokenKind::OpenDelim(..) | TokenKind::CloseDelim(..) | TokenKind::Literal(..) | TokenKind::Ident(..)
+            | TokenKind::Lifetime | TokenKind::Interpolated | TokenKind::DocComment(..) | TokenKind::Eof => return None,
+        };
+
+        Some(Token::new(kind, self.span.to(&joint.span)))
+    }
 }
 
 pub enum Spacing {
