@@ -1,4 +1,4 @@
-use crate::span::{DUMMY_SPAN, Span};
+use crate::span::{Span, DUMMY_SPAN};
 
 pub enum CommentKind {
     Line,
@@ -122,9 +122,7 @@ pub struct Token {
 
 impl Token {
     pub fn new(kind: TokenKind, span: Span) -> Self {
-        Self {
-            kind, span
-        }
+        Self { kind, span }
     }
 
     pub fn dummy() -> Self {
