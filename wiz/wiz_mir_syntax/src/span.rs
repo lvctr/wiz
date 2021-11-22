@@ -22,7 +22,6 @@ impl Span {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::span::Span;
