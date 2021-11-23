@@ -8,3 +8,15 @@ pub struct StringReader<'a> {
     /// Target src
     pub(crate) src: &'a str,
 }
+
+impl <'a> StringReader<'a>{
+    
+    pub fn new(src:&'a str, start_position: usize, end_src_index: usize) -> Self {
+        Self {
+            start_position,
+            position: start_position,
+            end_src_index,
+            src
+        }
+    }
+}
