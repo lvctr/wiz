@@ -1,5 +1,6 @@
 pub mod span;
 pub mod token;
+pub mod syntax;
 
 #[cfg(test)]
 mod tests {
