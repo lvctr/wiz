@@ -12,5 +12,13 @@ struct Item {
     pub id: usize,
     pub attrs: Vec<()>,
     pub visibility: (),
-    pub kind: (),
+    pub kind: ItemKind,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+enum ItemKind {
+    Struct,
+    Function,
+    Const,
+    Static,
 }
