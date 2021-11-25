@@ -1,7 +1,7 @@
-use wiz_mir_syntax::span::DUMMY_SPAN;
-use wiz_mir_syntax::token::{Spacing, Token};
-use wiz_mir_syntax::syntax;
 use crate::error::PResult;
+use wiz_mir_syntax::span::DUMMY_SPAN;
+use wiz_mir_syntax::syntax;
+use wiz_mir_syntax::token::{Spacing, Token};
 
 struct Parser {
     pub token: Token,
@@ -14,7 +14,7 @@ impl Parser {
         Ok(syntax::File {
             attrs: vec![],
             items: vec![],
-            span: DUMMY_SPAN
+            span: DUMMY_SPAN,
         })
     }
 }
