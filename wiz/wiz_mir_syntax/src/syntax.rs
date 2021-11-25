@@ -1,14 +1,14 @@
 use crate::span::Span;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-struct File {
+pub struct File {
     pub attrs: Vec<()>,
     pub items: Vec<Item>,
     pub span: Span,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-struct Item {
+pub struct Item {
     pub id: usize,
     pub attrs: Vec<()>,
     pub visibility: (),
@@ -16,7 +16,7 @@ struct Item {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-enum ItemKind {
+pub enum ItemKind {
     Struct,
     Function,
     Const,
