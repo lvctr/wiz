@@ -22,3 +22,13 @@ pub enum ItemKind {
     Const,
     Static,
 }
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct Statement {
+    kind: StatementKind
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub enum StatementKind {
+
+}
