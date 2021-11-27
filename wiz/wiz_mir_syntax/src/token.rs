@@ -46,10 +46,12 @@ pub enum DelimToken {
     NoDelim,
 }
 
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Lit {
     pub kind: LitKind,
 }
 
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum TokenKind {
     /* Expression-operator symbols. */
     Eq,
@@ -114,11 +116,13 @@ pub enum TokenKind {
     Eof,
 }
 
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum AttrStyle {
     Inner,
     Outer,
 }
 
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
