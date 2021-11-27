@@ -25,10 +25,8 @@ pub enum ItemKind {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Statement {
-    kind: StatementKind
+    kind: StatementKind,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub enum StatementKind {
-
-}
+pub enum StatementKind {}
