@@ -20,7 +20,7 @@ pub struct Item {
 pub enum ItemKind {
     Struct(VariantData),
     Union(VariantData),
-    Function(),
+    Function(FunctionDef),
     Const(),
     Static(),
 }
@@ -41,6 +41,12 @@ pub struct Field {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
+pub struct FunctionDef {
+    pub span: Span,
+    pub body: Option<Block>,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Statement {
     pub kind: StatementKind,
 }
@@ -50,4 +56,10 @@ pub enum StatementKind {
     Expression,
     WhileLoop,
     Return,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct Block {
+    pub span: Span,
+    pub statements: Vec<Statement>
 }
