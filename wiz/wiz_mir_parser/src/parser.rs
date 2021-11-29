@@ -23,13 +23,13 @@ impl Parser {
             id: 0,
             attrs: vec![],
             visibility: (),
-            kind: syntax::ItemKind::Struct
+            kind: syntax::ItemKind::Struct,
         })
     }
-    
+
     fn parse_statement(&mut self) -> PResult<syntax::Statement> {
         Ok(syntax::Statement {
-            kind: syntax::StatementKind::Expression
+            kind: syntax::StatementKind::Expression,
         })
     }
 }
