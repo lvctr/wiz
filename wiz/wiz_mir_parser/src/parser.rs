@@ -18,10 +18,14 @@ impl Parser {
         })
     }
 
+    fn parse_attributes(&mut self) -> PResult<Vec<()>> {
+        Ok(vec![()])
+    }
+
     fn parse_item(&mut self) -> PResult<syntax::Item> {
         Ok(syntax::Item {
             id: 0,
-            attrs: vec![],
+            attrs: self.parse_attributes()?,
             visibility: (),
             kind: syntax::ItemKind::Struct
         })
