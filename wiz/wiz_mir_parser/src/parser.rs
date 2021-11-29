@@ -15,10 +15,8 @@ impl Parser {
         let start = self.token.span.clone();
         let mut items = vec![];
         while self.reach_eof {
-            items.push(
-                self.parse_item()?
-            );
-        };
+            items.push(self.parse_item()?);
+        }
         Ok(syntax::File {
             attrs: vec![],
             items,
