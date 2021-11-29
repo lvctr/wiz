@@ -27,7 +27,7 @@ pub enum ItemKind {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct VariantData {
-    fields: Vec<Field>,
+    pub fields: Vec<Field>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]

@@ -23,7 +23,8 @@ impl Parser {
             id: 0,
             attrs: vec![],
             visibility: (),
-            kind: syntax::ItemKind::Struct,
+            kind: syntax::ItemKind::Struct(syntax::VariantData { fields: vec![] }),
+            span: DUMMY_SPAN,
         })
     }
 
