@@ -1,14 +1,14 @@
 use crate::span::Span;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-struct File {
+pub struct File {
     pub attrs: Vec<()>,
     pub items: Vec<Item>,
     pub span: Span,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-struct Item {
+pub struct Item {
     pub id: usize,
     pub attrs: Vec<()>,
     pub visibility: (),
@@ -38,4 +38,16 @@ struct Field {
     pub span: Span,
     pub identifier: String,
     pub ty: (),
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct Statement {
+    pub kind: StatementKind,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub enum StatementKind {
+    Expression,
+    WhileLoop,
+    Return,
 }
