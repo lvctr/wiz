@@ -61,5 +61,5 @@ pub enum StatementKind {
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Block {
     pub span: Span,
-    pub statements: Vec<Statement>
+    pub statements: Vec<Statement>,
 }
