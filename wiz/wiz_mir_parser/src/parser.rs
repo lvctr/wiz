@@ -18,7 +18,7 @@ impl Parser {
             items.push(self.parse_item()?);
         }
         Ok(syntax::File {
-            attrs: vec![],
+            attrs: self.parse_attributes()?,
             items,
             span: start.to(&self.token.span),
         })
