@@ -17,7 +17,7 @@ pub struct Item {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-enum ItemKind {
+pub enum ItemKind {
     Struct(VariantData),
     Union(VariantData),
     Function(),
@@ -26,12 +26,12 @@ enum ItemKind {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-struct VariantData {
+pub struct VariantData {
     fields: Vec<Field>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-struct Field {
+pub struct Field {
     pub id: usize,
     pub attrs: Vec<()>,
     pub visibility: (),
