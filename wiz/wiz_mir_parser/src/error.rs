@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 
 pub type PResult<T> = Result<T, ParseError>;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct ParseError(String);
 
 impl Display for ParseError {
