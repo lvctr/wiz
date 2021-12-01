@@ -238,12 +238,8 @@ pub enum TokenTree {
 impl TokenTree {
     pub fn span(&self) -> Span {
         match self {
-            TokenTree::Token(t) => {
-                t.span.clone()
-            }
-            TokenTree::Delimited(d, _, _) => {
-                d.open.to(&d.close)
-            }
+            TokenTree::Token(t) => t.span.clone(),
+            TokenTree::Delimited(d, _, _) => d.open.to(&d.close),
         }
     }
 }

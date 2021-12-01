@@ -1,5 +1,5 @@
-use std::vec::IntoIter;
 use crate::error::PResult;
+use std::vec::IntoIter;
 use wiz_mir_syntax::span::DUMMY_SPAN;
 use wiz_mir_syntax::syntax;
 use wiz_mir_syntax::token::{Spacing, Token, TokenStream, TokenTree, TreeAndSpacing};
@@ -59,7 +59,7 @@ impl From<TokenStream> for Parser {
             stream: stream.0.into_iter(),
             token: TokenTree::Token(Token::dummy()),
             prev_token: TokenTree::Token(Token::dummy()),
-            token_spacing: Spacing::Alone
+            token_spacing: Spacing::Alone,
         }
     }
 }
