@@ -1,8 +1,11 @@
-use crate::error::PResult;
+#[cfg(test)]
+mod tests;
+
+use crate::error::{ParseError, PResult};
 use std::vec::IntoIter;
 use wiz_mir_syntax::span::DUMMY_SPAN;
 use wiz_mir_syntax::syntax;
-use wiz_mir_syntax::token::{Spacing, Token, TokenStream, TokenTree, TreeAndSpacing};
+use wiz_mir_syntax::token::{Spacing, Token, TokenKind, TokenStream, TokenTree, TreeAndSpacing};
 
 struct Parser {
     pub stream: IntoIter<TreeAndSpacing>,
@@ -14,19 +17,43 @@ struct Parser {
 impl Parser {
     pub fn parse(&mut self) -> PResult<syntax::File> {
         let start = self.token.span().clone();
+        let attrs = self.parse_attributes()?;
         let mut items = vec![];
         while !self.stream.is_empty() {
+            self.bump();
             items.push(self.parse_item()?);
         }
         Ok(syntax::File {
-            attrs: self.parse_attributes()?,
+            attrs,
             items,
             span: start.to(&self.token.span()),
         })
     }
+    /// Consume line that start with `#!`
+    fn parse_file_attribute(&mut self) -> PResult<Vec<()>> {
+        match &self.token {
+            TokenTree::Token(token) => {
+                match token.kind {
+                    TokenKind::Pound => {
+                        // TODO
+                        Err(ParseError::from(format!("Unsupported syntax #")))
+                    }
+                    _ => {Ok(vec![])}
+                }
+            }
+            TokenTree::Delimited(_, _, _) => { Ok(vec![]) }
+        }
+    }
 
     fn parse_attributes(&mut self) -> PResult<Vec<()>> {
-        Ok(vec![()])
+        match &self.token {
+            TokenTree::Token(token) => {
+                match token {
+                    &_ => { Ok(vec![]) }
+                }
+            }
+            TokenTree::Delimited(_, _, _) => { Ok(vec![]) }
+        }
     }
 
     fn parse_item(&mut self) -> PResult<syntax::Item> {
