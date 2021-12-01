@@ -235,6 +235,19 @@ pub enum TokenTree {
     Delimited(DelimSpan, DelimToken, TokenStream),
 }
 
+impl TokenTree {
+    pub fn span(&self) -> Span {
+        match self {
+            TokenTree::Token(t) => {
+                t.span.clone()
+            }
+            TokenTree::Delimited(d, _, _) => {
+                d.open.to(&d.close)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct DelimSpan {
     pub open: Span,

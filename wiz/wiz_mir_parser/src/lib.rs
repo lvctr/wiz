@@ -1,3 +1,4 @@
+#![feature(exact_size_is_empty)]
 pub mod error;
 pub mod lexer;
 pub mod parser;
