@@ -221,11 +221,13 @@ impl Token {
     }
 }
 
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Spacing {
     Alone,
     Joint,
 }
 
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum TokenTree {
     /// A single token.
     Token(Token),
@@ -233,6 +235,7 @@ pub enum TokenTree {
     Delimited(DelimSpan, DelimToken, TokenStream),
 }
 
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct DelimSpan {
     pub open: Span,
     pub close: Span,
@@ -240,7 +243,7 @@ pub struct DelimSpan {
 
 pub type TreeAndSpacing = (TokenTree, Spacing);
 
-#[derive(Default)]
+#[derive(Default, Debug, Eq, PartialEq, Clone)]
 pub struct TokenStream(pub Vec<TreeAndSpacing>);
 
 impl TokenStream {
