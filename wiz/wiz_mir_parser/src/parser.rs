@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use crate::error::{ParseError, PResult};
+use crate::error::{PResult, ParseError};
 use std::vec::IntoIter;
 use wiz_mir_syntax::span::DUMMY_SPAN;
 use wiz_mir_syntax::syntax;
@@ -38,21 +38,19 @@ impl Parser {
                         // TODO
                         Err(ParseError::from(format!("Unsupported syntax #")))
                     }
-                    _ => {Ok(vec![])}
+                    _ => Ok(vec![]),
                 }
             }
-            TokenTree::Delimited(_, _, _) => { Ok(vec![]) }
+            TokenTree::Delimited(_, _, _) => Ok(vec![]),
         }
     }
 
     fn parse_attributes(&mut self) -> PResult<Vec<()>> {
         match &self.token {
-            TokenTree::Token(token) => {
-                match token {
-                    &_ => { Ok(vec![]) }
-                }
-            }
-            TokenTree::Delimited(_, _, _) => { Ok(vec![]) }
+            TokenTree::Token(token) => match token {
+                &_ => Ok(vec![]),
+            },
+            TokenTree::Delimited(_, _, _) => Ok(vec![]),
         }
     }
 
