@@ -57,22 +57,16 @@ impl Parser {
     fn parse_item(&mut self) -> PResult<syntax::Item> {
         let attrs = self.parse_attributes()?;
         match &self.token {
-            TokenTree::Token(token) => {
-                match token.kind {
-                    TokenKind::Ident(i) => {
-                        Ok(syntax::Item {
-                            id: 0,
-                            attrs,
-                            visibility: (),
-                            kind: syntax::ItemKind::Struct(syntax::VariantData { fields: vec![] }),
-                            span: DUMMY_SPAN,
-                        })
-                    }
-                    _ => {
-                        Err(ParseError::from(format!("Unecsepted token {:?}", token)))
-                    }
-                }
-            }
+            TokenTree::Token(token) => match token.kind {
+                TokenKind::Ident(i) => Ok(syntax::Item {
+                    id: 0,
+                    attrs,
+                    visibility: (),
+                    kind: syntax::ItemKind::Struct(syntax::VariantData { fields: vec![] }),
+                    span: DUMMY_SPAN,
+                }),
+                _ => Err(ParseError::from(format!("Unecsepted token {:?}", token))),
+            },
             TokenTree::Delimited(_, t, _) => {
                 Err(ParseError::from(format!("Unecsepted token {:?}", t)))
             }
