@@ -19,8 +19,7 @@ impl Parser {
         let start = self.token.span().clone();
         let attrs = self.parse_attributes()?;
         let mut items = vec![];
-        while !self.stream.is_empty() {
-            self.bump();
+        while let Some(_) = self.bump() {
             items.push(self.parse_item()?);
         }
         Ok(syntax::File {
@@ -79,11 +78,12 @@ impl Parser {
         })
     }
 
-    fn bump(&mut self) {
+    fn bump(&mut self) -> Option<()>{
         self.prev_token = self.token.clone();
-        let (token, token_spacing) = self.stream.next().unwrap();
+        let (token, token_spacing) = self.stream.next()?;
         self.token = token;
         self.token_spacing = token_spacing;
+        Some(())
     }
 }
 
