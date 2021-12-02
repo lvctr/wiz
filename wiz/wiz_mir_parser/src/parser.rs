@@ -78,7 +78,7 @@ impl Parser {
         })
     }
 
-    fn bump(&mut self) -> Option<()>{
+    fn bump(&mut self) -> Option<()> {
         self.prev_token = self.token.clone();
         let (token, token_spacing) = self.stream.next()?;
         self.token = token;
