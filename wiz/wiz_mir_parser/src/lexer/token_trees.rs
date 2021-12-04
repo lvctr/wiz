@@ -1,10 +1,12 @@
 use crate::error::PResult;
 use crate::lexer::string_reader::StringReader;
+use crate::lexer::token_stream_builder::TokenStreamBuilder;
 use std::collections::HashMap;
 use wiz_mir_syntax::span::Span;
 use wiz_mir_syntax::token;
-use wiz_mir_syntax::token::{DelimSpan, DelimToken, Spacing, Token, TokenStream, TokenTree, TreeAndSpacing};
-use crate::lexer::token_stream_builder::TokenStreamBuilder;
+use wiz_mir_syntax::token::{
+    DelimSpan, DelimToken, Spacing, Token, TokenStream, TokenTree, TreeAndSpacing,
+};
 
 pub struct UnmatchedBrace {
     pub expected_delim: token::DelimToken,
