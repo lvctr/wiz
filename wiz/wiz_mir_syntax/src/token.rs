@@ -34,7 +34,7 @@ pub enum LitKind {
     Err,
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
 pub enum DelimToken {
     /// A round parenthesis (i.e., `(` or `)`).
     Paren,
@@ -248,6 +248,20 @@ impl TokenTree {
 pub struct DelimSpan {
     pub open: Span,
     pub close: Span,
+}
+
+impl DelimSpan {
+    pub fn from_single(sp: Span) -> Self {
+        DelimSpan { open: sp.clone(), close: sp }
+    }
+
+    pub fn from_pair(open: Span, close: Span) -> Self {
+        DelimSpan { open, close }
+    }
+
+    pub fn dummy() -> Self {
+        Self::from_single(DUMMY_SPAN)
+    }
 }
 
 pub type TreeAndSpacing = (TokenTree, Spacing);
