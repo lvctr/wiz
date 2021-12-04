@@ -2,7 +2,8 @@ use crate::lexer::string_reader::StringReader;
 use std::collections::HashMap;
 use wiz_mir_syntax::span::Span;
 use wiz_mir_syntax::token;
-use wiz_mir_syntax::token::Token;
+use wiz_mir_syntax::token::{Token, TokenStream};
+use crate::error::PResult;
 
 pub struct UnmatchedBrace {
     pub expected_delim: token::DelimToken,
@@ -28,6 +29,12 @@ pub struct TokenTreeReader<'a> {
     /// Collect the spans of braces (Open, Close). Used only
     /// for detecting if blocks are empty and only braces.
     matching_block_spans: Vec<(Span, Span)>,
+}
+
+impl<'a> TokenTreeReader<'a> {
+    pub fn into_token_stream(&mut self) -> PResult<TokenStream> {
+        Ok(TokenStream::new(vec![]))
+    }
 }
 
 impl<'a> From<StringReader<'a>> for TokenTreeReader<'a> {

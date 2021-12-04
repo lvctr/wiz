@@ -8,6 +8,6 @@ use crate::lexer::token_trees::TokenTreeReader;
 use wiz_mir_syntax::token::TokenStream;
 
 pub fn parse_token_trees(src: &str, start_position: usize) -> PResult<TokenStream> {
-    let tt_reader = TokenTreeReader::from(StringReader::new(src, start_position, src.len()));
-    Ok(TokenStream::default())
+    let mut tt_reader = TokenTreeReader::from(StringReader::new(src, start_position, src.len()));
+    tt_reader.into_token_stream()
 }
