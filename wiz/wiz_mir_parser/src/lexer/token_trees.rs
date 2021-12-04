@@ -1,9 +1,9 @@
+use crate::error::PResult;
 use crate::lexer::string_reader::StringReader;
 use std::collections::HashMap;
 use wiz_mir_syntax::span::Span;
 use wiz_mir_syntax::token;
 use wiz_mir_syntax::token::{Token, TokenStream};
-use crate::error::PResult;
 
 pub struct UnmatchedBrace {
     pub expected_delim: token::DelimToken,
