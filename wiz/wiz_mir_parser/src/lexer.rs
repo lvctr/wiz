@@ -9,5 +9,5 @@ use wiz_mir_syntax::token::TokenStream;
 
 pub fn parse_token_trees(src: &str, start_position: usize) -> PResult<TokenStream> {
     let mut tt_reader = TokenTreeReader::from(StringReader::new(src, start_position, src.len()));
-    tt_reader.into_token_stream()
+    tt_reader.parse_all_token_trees()
 }

@@ -3,7 +3,8 @@ use crate::lexer::string_reader::StringReader;
 use std::collections::HashMap;
 use wiz_mir_syntax::span::Span;
 use wiz_mir_syntax::token;
-use wiz_mir_syntax::token::{Token, TokenStream};
+use wiz_mir_syntax::token::{DelimSpan, DelimToken, Spacing, Token, TokenStream, TokenTree, TreeAndSpacing};
+use crate::lexer::token_stream_builder::TokenStreamBuilder;
 
 pub struct UnmatchedBrace {
     pub expected_delim: token::DelimToken,
@@ -32,8 +33,15 @@ pub struct TokenTreeReader<'a> {
 }
 
 impl<'a> TokenTreeReader<'a> {
-    pub fn into_token_stream(&mut self) -> PResult<TokenStream> {
-        Ok(TokenStream::new(vec![]))
+    // Parse a stream of tokens into a list of `TokenTree`s, up to an `Eof`.
+    pub(crate) fn parse_all_token_trees(&mut self) -> PResult<TokenStream> {
+        let mut buf = TokenStreamBuilder::default();
+        Ok(buf.into_token_stream())
+    }
+    fn bump(&mut self) -> Spacing {
+        let (spacing, token) = self.string_reader.next_token();
+        self.token = token;
+        spacing
     }
 }
 
