@@ -1,12 +1,12 @@
 use wiz_mir_syntax::token::{Spacing, TokenStream, TokenTree, TreeAndSpacing};
 
 #[derive(Default)]
-struct TokenStreamBuilder {
+pub(crate) struct TokenStreamBuilder {
     buf: Vec<TreeAndSpacing>,
 }
 
 impl TokenStreamBuilder {
-    fn push(&mut self, (tree, joint): TreeAndSpacing) {
+    pub(crate) fn push(&mut self, (tree, joint): TreeAndSpacing) {
         if let Some((TokenTree::Token(prev_token), Spacing::Joint)) = self.buf.last() {
             if let TokenTree::Token(token) = &tree {
                 if let Some(glued) = prev_token.glue(token) {
@@ -19,7 +19,7 @@ impl TokenStreamBuilder {
         self.buf.push((tree, joint))
     }
 
-    fn into_token_stream(self) -> TokenStream {
+    pub(crate) fn into_token_stream(self) -> TokenStream {
         TokenStream::new(self.buf)
     }
 }
