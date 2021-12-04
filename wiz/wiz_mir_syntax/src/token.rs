@@ -252,7 +252,10 @@ pub struct DelimSpan {
 
 impl DelimSpan {
     pub fn from_single(sp: Span) -> Self {
-        DelimSpan { open: sp.clone(), close: sp }
+        DelimSpan {
+            open: sp.clone(),
+            close: sp,
+        }
     }
 
     pub fn from_pair(open: Span, close: Span) -> Self {
