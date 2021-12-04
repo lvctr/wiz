@@ -1,6 +1,6 @@
-use wiz_mir_syntax::token::TokenStream;
 use crate::error::PResult;
 use crate::lexer::parse_token_trees;
+use wiz_mir_syntax::token::TokenStream;
 
 pub mod error;
 pub mod lexer;
