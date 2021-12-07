@@ -4,9 +4,7 @@ use crate::lexer::token_stream_builder::TokenStreamBuilder;
 use std::collections::HashMap;
 use wiz_mir_syntax::span::Span;
 use wiz_mir_syntax::token;
-use wiz_mir_syntax::token::{
-    DelimSpan, DelimToken, Spacing, Token, TokenStream, TokenTree, TreeAndSpacing,
-};
+use wiz_mir_syntax::token::{DelimSpan, DelimToken, Spacing, Token, TokenKind, TokenStream, TokenTree, TreeAndSpacing};
 
 pub struct UnmatchedBrace {
     pub expected_delim: token::DelimToken,
@@ -38,8 +36,42 @@ impl<'a> TokenTreeReader<'a> {
     // Parse a stream of tokens into a list of `TokenTree`s, up to an `Eof`.
     pub(crate) fn parse_all_token_trees(&mut self) -> PResult<TokenStream> {
         let mut buf = TokenStreamBuilder::default();
+        self.bump();
+        while self.token.kind != token::TokenKind::Eof {
+            buf.push(self.parse_token_trees()?);
+        }
         Ok(buf.into_token_stream())
     }
+
+    fn parse_token_trees(&mut self) -> PResult<TreeAndSpacing> {
+        let prev_token = self.token.clone();
+        let spacing = self.bump();
+        match prev_token.kind {
+            TokenKind::OpenDelim(d) => {self.parse_token_until_close_delim(d, spacing)}
+            _ => {
+                Ok((TokenTree::Token(prev_token), spacing))
+            }
+        }
+    }
+
+    fn parse_token_until_close_delim(&mut self, open: DelimToken, spacing: Spacing) -> PResult<TreeAndSpacing> {
+        let mut buf = TokenStreamBuilder::default();
+        let mut spacing = spacing;
+        loop {
+            match self.token.kind {
+                TokenKind::CloseDelim(_) => {
+                    break
+                }
+                _ => {
+                    buf.push((TokenTree::Token(self.token.clone()), spacing))
+                }
+            }
+            spacing = self.bump();
+
+        }
+        Ok((TokenTree::Delimited(DelimSpan::dummy(),open,buf.into_token_stream()), spacing))
+    }
+
     fn bump(&mut self) -> Spacing {
         let (spacing, token) = self.string_reader.next_token();
         self.token = token;
