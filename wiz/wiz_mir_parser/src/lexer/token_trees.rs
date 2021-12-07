@@ -4,7 +4,9 @@ use crate::lexer::token_stream_builder::TokenStreamBuilder;
 use std::collections::HashMap;
 use wiz_mir_syntax::span::Span;
 use wiz_mir_syntax::token;
-use wiz_mir_syntax::token::{DelimSpan, DelimToken, Spacing, Token, TokenKind, TokenStream, TokenTree, TreeAndSpacing};
+use wiz_mir_syntax::token::{
+    DelimSpan, DelimToken, Spacing, Token, TokenKind, TokenStream, TokenTree, TreeAndSpacing,
+};
 
 pub struct UnmatchedBrace {
     pub expected_delim: token::DelimToken,
@@ -47,29 +49,29 @@ impl<'a> TokenTreeReader<'a> {
         let prev_token = self.token.clone();
         let spacing = self.bump();
         match prev_token.kind {
-            TokenKind::OpenDelim(d) => {self.parse_token_until_close_delim(d, spacing)}
-            _ => {
-                Ok((TokenTree::Token(prev_token), spacing))
-            }
+            TokenKind::OpenDelim(d) => self.parse_token_until_close_delim(d, spacing),
+            _ => Ok((TokenTree::Token(prev_token), spacing)),
         }
     }
 
-    fn parse_token_until_close_delim(&mut self, open: DelimToken, spacing: Spacing) -> PResult<TreeAndSpacing> {
+    fn parse_token_until_close_delim(
+        &mut self,
+        open: DelimToken,
+        spacing: Spacing,
+    ) -> PResult<TreeAndSpacing> {
         let mut buf = TokenStreamBuilder::default();
         let mut spacing = spacing;
         loop {
             match self.token.kind {
-                TokenKind::CloseDelim(_) => {
-                    break
-                }
-                _ => {
-                    buf.push((TokenTree::Token(self.token.clone()), spacing))
-                }
+                TokenKind::CloseDelim(_) => break,
+                _ => buf.push((TokenTree::Token(self.token.clone()), spacing)),
             }
             spacing = self.bump();
-
         }
-        Ok((TokenTree::Delimited(DelimSpan::dummy(),open,buf.into_token_stream()), spacing))
+        Ok((
+            TokenTree::Delimited(DelimSpan::dummy(), open, buf.into_token_stream()),
+            spacing,
+        ))
     }
 
     fn bump(&mut self) -> Spacing {
