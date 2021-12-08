@@ -262,7 +262,7 @@ impl HLIR2MLIR {
         self.context.push_name_space(f.name.clone());
         for d in f.body.into_iter() {
             self.decl(d)?;
-        };
+        }
         self.context.pop_name_space();
         Ok(())
     }
