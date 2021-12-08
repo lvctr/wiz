@@ -145,8 +145,7 @@ impl<'a> StringReader<'a> {
             wiz_lexar::TokenKind::Unknown => {
                 panic!("Unknown token")
             }
-        });
-        None
+        })
     }
 
     fn cook_doc_comment(
