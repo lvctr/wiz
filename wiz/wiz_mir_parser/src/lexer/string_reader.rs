@@ -27,7 +27,7 @@ impl<'a> StringReader<'a> {
         loop {
             let text = &self.src[self.position..];
             if text.is_empty() {
-                let span = syntax_span::Span::new(self.position, self.position);
+                let span = syntax_span::Span::new(self.position, 0);
                 return (
                     spacing,
                     syntax_token::Token::new(syntax_token::TokenKind::Eof, span),
@@ -41,7 +41,7 @@ impl<'a> StringReader<'a> {
 
             match self.cook_lexer_token(token.kind) {
                 Some(kind) => {
-                    let span = syntax_span::Span::new(start, self.position);
+                    let span = syntax_span::Span::new(start, self.position - start);
                     return (spacing, syntax_token::Token::new(kind, span));
                 }
                 None => spacing = syntax_token::Spacing::Alone,
