@@ -14,7 +14,7 @@ use std::convert::TryFrom;
 use std::path::Path;
 use std::process::exit;
 use wiz_mir::expr::{
-    MLBinOp, MLBinOpKind, MLBlock, MLCall, MLExpr, MLIf, MLLiteral, MLMember, MLSubscript,
+    MLBinOp, MLBinOpKind, MLBlock, MLCall, MLExpr, MLIf, MLLiteral, MLMember, MLName, MLSubscript,
     MLTypeCast, MLUnaryOp, MLUnaryOpKind,
 };
 use wiz_mir::ml_decl::{MLDecl, MLFun, MLStruct, MLVar};
@@ -81,13 +81,13 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    fn get_from_environment(&self, name: String) -> Option<AnyValueEnum<'ctx>> {
-        match self.ml_context.local_environments.get(&name) {
+    fn get_from_environment(&self, name: &String) -> Option<AnyValueEnum<'ctx>> {
+        match self.ml_context.local_environments.get(name) {
             Some(v) => Some(*v),
-            None => match self.module.get_function(&*name) {
-                Some(f) => Some(AnyValueEnum::FunctionValue(f)),
-                None => None,
-            },
+            None => self
+                .module
+                .get_function(name)
+                .map(|f| AnyValueEnum::FunctionValue(f)),
         }
     }
 
@@ -125,7 +125,7 @@ impl<'ctx> CodeGen<'ctx> {
 
     pub fn expr(&mut self, e: MLExpr) -> AnyValueEnum<'ctx> {
         match e {
-            MLExpr::Name(n) => self.get_from_environment(n.name).unwrap(),
+            MLExpr::Name(n) => self.name_expr(n),
             MLExpr::Literal(literal) => self.literal(literal),
             MLExpr::PrimitiveBinOp(b) => self.binop(b),
             MLExpr::PrimitiveUnaryOp(u) => self.unary_op(u),
@@ -137,6 +137,15 @@ impl<'ctx> CodeGen<'ctx> {
             MLExpr::Return(r) => self.return_expr(r),
             MLExpr::PrimitiveTypeCast(t) => self.type_cast(t),
             MLExpr::Block(b) => self.block(b),
+        }
+    }
+
+    pub fn name_expr(&self, n: MLName) -> AnyValueEnum<'ctx> {
+        match self.get_from_environment(&n.name) {
+            None => {
+                panic!("Can not resolve name {}", n.name)
+            }
+            Some(n) => n,
         }
     }
 
@@ -222,7 +231,7 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     pub fn call(&mut self, c: MLCall) -> AnyValueEnum<'ctx> {
-        let target = self.expr(*c.target);
+        let target = self.name_expr(c.target);
         let args = c.args.into_iter().map(|arg| {
             if let MLValueType::Primitive(name) = arg.arg.type_().into_value_type() {
                 if name != MLPrimitiveType::String {
@@ -240,7 +249,7 @@ impl<'ctx> CodeGen<'ctx> {
                 self.expr(arg.arg)
             }
         });
-        let args: Vec<BasicValueEnum> = args
+        let args: Vec<_> = args
             .filter_map(|arg| BasicValueEnum::try_from(arg).ok())
             .collect();
         let function = target.into_function_value();
@@ -679,9 +688,12 @@ impl<'ctx> CodeGen<'ctx> {
                     _ => true,
                 },
                 MLValueType::Struct(_) => true,
-                MLValueType::Pointer(r) | MLValueType::Reference(r) => {
-                    Self::need_load(p.get_element_type(), r)
-                }
+                MLValueType::Pointer(r) | MLValueType::Reference(r) => match &**r {
+                    MLType::Value(r) => Self::need_load(p.get_element_type(), r),
+                    MLType::Function(_) => {
+                        todo!()
+                    }
+                },
                 MLValueType::Array(_, _) => {
                     todo!()
                 }
@@ -982,12 +994,15 @@ impl<'ctx> CodeGen<'ctx> {
                 }
             },
             MLValueType::Struct(t) => AnyTypeEnum::from(self.module.get_struct_type(&*t).unwrap()),
-            MLValueType::Pointer(p) | MLValueType::Reference(p) => {
-                BasicTypeEnum::try_from(self.ml_type_to_type(*p))
+            MLValueType::Pointer(p) | MLValueType::Reference(p) => match *p {
+                MLType::Value(p) => BasicTypeEnum::try_from(self.ml_type_to_type(p))
                     .unwrap()
                     .ptr_type(AddressSpace::Generic)
-                    .as_any_type_enum()
-            }
+                    .as_any_type_enum(),
+                MLType::Function(_) => {
+                    todo!()
+                }
+            },
             MLValueType::Array(a, size) => {
                 let size = size as u32;
                 match self.ml_type_to_type(*a) {
