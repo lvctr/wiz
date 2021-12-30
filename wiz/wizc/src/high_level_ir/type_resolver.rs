@@ -13,8 +13,8 @@ use crate::high_level_ir::typed_decl::{
 };
 use crate::high_level_ir::typed_expr::{
     TypedArray, TypedBinOp, TypedCall, TypedCallArg, TypedExpr, TypedIf, TypedInstanceMember,
-    TypedLiteral, TypedName, TypedPostfixUnaryOp, TypedPrefixUnaryOp, TypedReturn, TypedSubscript,
-    TypedTypeCast, TypedUnaryOp,
+    TypedLiteral, TypedName, TypedPostfixUnaryOp, TypedPrefixUnaryOp, TypedPrefixUnaryOperator,
+    TypedReturn, TypedSubscript, TypedTypeCast, TypedUnaryOp,
 };
 use crate::high_level_ir::typed_file::{TypedFile, TypedSourceSet};
 use crate::high_level_ir::typed_stmt::{
@@ -563,10 +563,31 @@ impl TypeResolver {
 
     pub fn typed_prefix_unary_op(&mut self, u: TypedPrefixUnaryOp) -> Result<TypedPrefixUnaryOp> {
         let target = Box::new(self.expr(*u.target)?);
-        Result::Ok(TypedPrefixUnaryOp {
-            operator: u.operator,
-            type_: target.type_(),
-            target,
+        Result::Ok(match &u.operator {
+            TypedPrefixUnaryOperator::Negative
+            | TypedPrefixUnaryOperator::Positive
+            | TypedPrefixUnaryOperator::Not => TypedPrefixUnaryOp {
+                operator: u.operator,
+                type_: target.type_(),
+                target,
+            },
+            TypedPrefixUnaryOperator::Reference => TypedPrefixUnaryOp {
+                operator: u.operator,
+                type_: target
+                    .type_()
+                    .map(|t| TypedType::Value(TypedValueType::Reference(Box::new(t)))),
+                target,
+            },
+            TypedPrefixUnaryOperator::Dereference => TypedPrefixUnaryOp {
+                operator: u.operator,
+                type_: match target.type_() {
+                    None => None,
+                    Some(TypedType::Value(TypedValueType::Reference(t))) => Some(*t),
+                    Some(TypedType::Value(TypedValueType::Pointer(t))) => Some(*t),
+                    Some(_) => None,
+                },
+                target,
+            },
         })
     }
 
@@ -681,13 +702,21 @@ impl TypeResolver {
                                 .indexes
                                 .into_iter()
                                 .map(|i| self.expr(i))
-                                .collect::<Result<Vec<TypedExpr>>>()?,
+                                .collect::<Result<Vec<_>>>()?,
                             type_: Some(TypedType::uint8()),
                         });
                     }
                 }
-                TypedValueType::Array(_) => {
-                    todo!()
+                TypedValueType::Array(et, _) => {
+                    return Result::Ok(TypedSubscript {
+                        target: Box::new(target),
+                        indexes: s
+                            .indexes
+                            .into_iter()
+                            .map(|i| self.expr(i))
+                            .collect::<Result<Vec<_>>>()?,
+                        type_: Some(*et),
+                    })
                 }
                 TypedValueType::Tuple(_) => {
                     todo!()
@@ -706,7 +735,7 @@ impl TypeResolver {
                 .indexes
                 .into_iter()
                 .map(|i| self.expr(i))
-                .collect::<Result<Vec<TypedExpr>>>()?,
+                .collect::<Result<Vec<_>>>()?,
             type_: s.type_,
         })
     }
@@ -717,12 +746,14 @@ impl TypeResolver {
             .into_iter()
             .map(|e| self.expr(e))
             .collect::<Result<Vec<TypedExpr>>>()?;
+        let len = elements.len();
         Result::Ok(if let Some(e) = elements.get(0) {
             let e_type = e.type_();
             if elements.iter().all(|e| e.type_() == e_type) {
                 TypedArray {
                     elements,
-                    type_: todo!(),
+                    type_: e_type
+                        .map(|e| TypedType::Value(TypedValueType::Array(Box::new(e), len))),
                 }
             } else {
                 return Result::Err(ResolverError::from("Array elements must be same type."));
