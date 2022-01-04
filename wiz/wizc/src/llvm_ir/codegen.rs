@@ -6,13 +6,14 @@ use inkwell::execution_engine::ExecutionEngine;
 use inkwell::module::Module;
 use inkwell::support::LLVMString;
 use inkwell::targets::TargetTriple;
-use inkwell::types::{AnyType, AnyTypeEnum, BasicType, BasicTypeEnum};
-use inkwell::values::{AnyValue, AnyValueEnum, BasicValueEnum, FunctionValue};
+use inkwell::types::{AnyType, AnyTypeEnum, BasicMetadataTypeEnum, BasicType, BasicTypeEnum};
+use inkwell::values::{
+    AnyValue, AnyValueEnum, BasicMetadataValueEnum, BasicValueEnum, FunctionValue,
+};
 use inkwell::{AddressSpace, FloatPredicate, IntPredicate, OptimizationLevel};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::path::Path;
-use std::process::exit;
 use wiz_mir::expr::{
     MLArray, MLBinOp, MLBinOpKind, MLBlock, MLCall, MLExpr, MLIf, MLLiteral, MLMember, MLName,
     MLSubscript, MLTypeCast, MLUnaryOp, MLUnaryOpKind,
@@ -87,7 +88,7 @@ impl<'ctx> CodeGen<'ctx> {
             None => self
                 .module
                 .get_function(name)
-                .map(|f| AnyValueEnum::FunctionValue(f)),
+                .map(AnyValueEnum::FunctionValue),
         }
     }
 
@@ -134,7 +135,7 @@ impl<'ctx> CodeGen<'ctx> {
             MLExpr::Member(m) => self.member(m),
             MLExpr::Array(a) => self.array(a),
             MLExpr::If(i) => self.if_expr(i),
-            MLExpr::When => exit(-1),
+            MLExpr::When => todo!("when expr"),
             MLExpr::Return(r) => self.return_expr(r),
             MLExpr::PrimitiveTypeCast(t) => self.type_cast(t),
             MLExpr::Block(b) => self.block(b),
@@ -163,18 +164,12 @@ impl<'ctx> CodeGen<'ctx> {
                         MLPrimitiveType::Int128 | MLPrimitiveType::UInt128 => {
                             self.context.i128_type()
                         }
-                        MLPrimitiveType::Size | MLPrimitiveType::USize => {
-                            todo!()
-                        }
-                        _ => {
-                            eprintln!("Invalid MLIR Literal {:?}", name);
-                            exit(-1)
-                        }
+                        MLPrimitiveType::Size | MLPrimitiveType::USize => self
+                            .context
+                            .ptr_sized_int_type(self.execution_engine.get_target_data(), None),
+                        _ => panic!("Invalid MLIR Literal {:?}", name),
                     },
-                    p => {
-                        eprintln!("Invalid MLIR Literal {:?}", p);
-                        exit(-1)
-                    }
+                    p => panic!("Invalid MLIR Literal {:?}", p),
                 };
                 int_type.const_int(i, false).as_any_value_enum()
             }
@@ -184,15 +179,9 @@ impl<'ctx> CodeGen<'ctx> {
                     MLValueType::Primitive(name) => match name {
                         MLPrimitiveType::Float => self.context.f32_type(),
                         MLPrimitiveType::Double => self.context.f64_type(),
-                        _ => {
-                            eprintln!("Invalid MLIR Literal {:?}", name);
-                            exit(-1)
-                        }
+                        _ => panic!("Invalid MLIR Literal {:?}", name),
                     },
-                    p => {
-                        eprintln!("Invalid MLIR Literal {:?}", p);
-                        exit(-1)
-                    }
+                    p => panic!("Invalid MLIR Literal {:?}", p),
                 };
                 float_type.const_float(f).as_any_value_enum()
             }
@@ -213,17 +202,16 @@ impl<'ctx> CodeGen<'ctx> {
                     .const_int(if b { 1 } else { 0 }, false)
                     .as_any_value_enum()
             }
-            MLLiteral::Null { .. } => {
-                println!("Literall::Null");
-                exit(-2)
+            MLLiteral::Null { type_ } => {
+                let ty = self.ml_type_to_type(type_);
+                let ty = BasicTypeEnum::try_from(ty).unwrap();
+                let ptr_ty = ty.ptr_type(AddressSpace::Generic);
+                ptr_ty.const_null().as_any_value_enum()
             }
             MLLiteral::Struct { type_ } => {
                 let struct_type = self.module.get_struct_type(&*match type_ {
                     MLValueType::Struct(name) => name,
-                    p => {
-                        eprintln!("Invalid Struct Literal {:?}", p);
-                        exit(-1)
-                    }
+                    p => panic!("Invalid Struct Literal {:?}", p),
                 });
                 let struct_type = struct_type.unwrap();
                 struct_type.const_zero().as_any_value_enum()
@@ -236,14 +224,14 @@ impl<'ctx> CodeGen<'ctx> {
         let args = c.args.into_iter().map(|arg| {
             if let MLValueType::Primitive(name) = arg.arg.type_().into_value_type() {
                 if name != MLPrimitiveType::String {
-                    let t = arg.type_().into_value_type();
+                    let t = MLValueType::Primitive(name);
                     let e = self.expr(arg.arg);
                     self.load_if_pointer_value(e, &t)
                 } else {
                     self.expr(arg.arg)
                 }
             } else if let MLValueType::Pointer(p) = arg.arg.type_().into_value_type() {
-                let t = arg.type_().into_value_type();
+                let t = MLValueType::Pointer(p);
                 let e = self.expr(arg.arg);
                 self.load_if_pointer_value(e, &t)
             } else {
@@ -253,6 +241,7 @@ impl<'ctx> CodeGen<'ctx> {
         let args: Vec<_> = args
             .filter_map(|arg| BasicValueEnum::try_from(arg).ok())
             .collect();
+        let args: Vec<BasicMetadataValueEnum> = args.into_iter().map(|i| i.into()).collect();
         let function = target.into_function_value();
         let bv = self
             .builder
@@ -389,9 +378,49 @@ impl<'ctx> CodeGen<'ctx> {
                     v.as_any_value_enum()
                 }
             },
+            (AnyValueEnum::PointerValue(p), AnyValueEnum::IntValue(i)) => match b.kind {
+                MLBinOpKind::Plus => {
+                    let p = unsafe { self.builder.build_in_bounds_gep(p, &[i], "padd") };
+                    p.as_any_value_enum()
+                }
+                MLBinOpKind::Minus => {
+                    let i = self.builder.build_int_neg(i, "psub_ineg");
+                    let p = unsafe { self.builder.build_in_bounds_gep(p, &[i], "psub") };
+                    p.as_any_value_enum()
+                }
+                MLBinOpKind::Mul => {
+                    todo!()
+                }
+                MLBinOpKind::Div => {
+                    todo!()
+                }
+                MLBinOpKind::Mod => {
+                    todo!()
+                }
+                MLBinOpKind::Equal => {
+                    todo!()
+                }
+                MLBinOpKind::GrateThanEqual => {
+                    todo!()
+                }
+                MLBinOpKind::GrateThan => {
+                    todo!()
+                }
+                MLBinOpKind::LessThanEqual => {
+                    todo!()
+                }
+                MLBinOpKind::LessThan => {
+                    todo!()
+                }
+                MLBinOpKind::NotEqual => {
+                    todo!()
+                }
+            },
             (r, l) => {
-                println!("{:?},{:?},{:?}", r, b.kind, l);
-                panic!("Unsupported binary operation")
+                panic!(
+                    "Unsupported binary operation.\n{:?},{:?},{:?}",
+                    r, b.kind, l
+                )
             }
         }
     }
@@ -486,6 +515,15 @@ impl<'ctx> CodeGen<'ctx> {
             // AnyValueEnum::PhiValue(_) => {}
             // AnyValueEnum::FunctionValue(_) => {}
             AnyValueEnum::PointerValue(p) => unsafe {
+                let et = p.get_type().get_element_type();
+                let p = if let AnyTypeEnum::ArrayType(a) = et {
+                    let a_type = a.get_element_type().ptr_type(AddressSpace::Generic);
+                    self.builder
+                        .build_bitcast(p, a_type, "aptr")
+                        .into_pointer_value()
+                } else {
+                    p
+                };
                 let i = self
                     .builder
                     .build_in_bounds_gep(p, &[index.into_int_value()], "idx");
@@ -494,10 +532,7 @@ impl<'ctx> CodeGen<'ctx> {
             // AnyValueEnum::StructValue(_) => {}
             // AnyValueEnum::VectorValue(_) => {}
             // AnyValueEnum::InstructionValue(_) => {}
-            t => {
-                eprintln!("unsupported subscript {:?}", t);
-                exit(-1)
-            }
+            t => panic!("unsupported subscript {:?}", t),
         }
     }
 
@@ -509,13 +544,9 @@ impl<'ctx> CodeGen<'ctx> {
             AnyValueEnum::PointerValue(p) => p,
             AnyValueEnum::StructValue(_) => {
                 eprintln!("never execution branch executed.");
-                eprintln!("struct member can not access directly.");
-                exit(-2)
+                panic!("struct member can not access directly.");
             }
-            _ => {
-                eprintln!("never execution branch executed.");
-                exit(-2)
-            }
+            _ => panic!("never execution branch executed."),
         };
 
         let ep = self
@@ -644,60 +675,107 @@ impl<'ctx> CodeGen<'ctx> {
         let target = self.load_if_pointer_value(target, &target_type);
         match target {
             // AnyValueEnum::ArrayValue(_) => {}
-            AnyValueEnum::IntValue(i) => {
-                let ty = match t.type_ {
-                    MLValueType::Primitive(p) => match p {
-                        MLPrimitiveType::Int8 | MLPrimitiveType::UInt8 => self.context.i8_type(),
-                        MLPrimitiveType::Int16 | MLPrimitiveType::UInt16 => self.context.i16_type(),
-                        MLPrimitiveType::Int32 | MLPrimitiveType::UInt32 => self.context.i32_type(),
-                        MLPrimitiveType::Int64 | MLPrimitiveType::UInt64 => self.context.i64_type(),
-                        MLPrimitiveType::Size | MLPrimitiveType::USize => {
-                            todo!()
-                        }
-                        _ => panic!(),
-                    },
-                    MLValueType::Struct(_) => {
-                        todo!()
-                    }
-                    MLValueType::Pointer(_) => {
-                        todo!()
-                    }
-                    MLValueType::Reference(_) => {
-                        todo!()
-                    }
-                    MLValueType::Array(_, _) => {
-                        todo!()
-                    }
-                };
-                let t = self.builder.build_int_cast(i, ty, "int_cast");
-                t.as_any_value_enum()
-            }
+            AnyValueEnum::IntValue(i) => match self.ml_type_to_type(t.type_) {
+                AnyTypeEnum::ArrayType(_) => {
+                    todo!()
+                }
+                AnyTypeEnum::FloatType(ty) => if target_type.is_signed_integer() {
+                    self.builder
+                        .build_signed_int_to_float(i, ty, "sint_to_float")
+                } else {
+                    self.builder
+                        .build_unsigned_int_to_float(i, ty, "uint_to_float")
+                }
+                .as_any_value_enum(),
+                AnyTypeEnum::FunctionType(_) => {
+                    todo!()
+                }
+                AnyTypeEnum::IntType(ty) => {
+                    let t = self.builder.build_int_cast(i, ty, "int_cast");
+                    t.as_any_value_enum()
+                }
+                AnyTypeEnum::PointerType(ty) => {
+                    let t = self.builder.build_int_to_ptr(i, ty, "int_to_ptr");
+                    t.as_any_value_enum()
+                }
+                AnyTypeEnum::StructType(_) => {
+                    todo!()
+                }
+                AnyTypeEnum::VectorType(_) => {
+                    todo!()
+                }
+                AnyTypeEnum::VoidType(_) => {
+                    todo!()
+                }
+            },
             AnyValueEnum::FloatValue(f) => {
-                let ty = match t.type_ {
-                    MLValueType::Primitive(p) => match p {
-                        MLPrimitiveType::Float => self.context.f32_type(),
-                        MLPrimitiveType::Double => self.context.f64_type(),
-                        _ => panic!(),
-                    },
-                    MLValueType::Struct(_) => {
+                let is_signed = t.type_.is_signed_integer();
+                match self.ml_type_to_type(t.type_) {
+                    AnyTypeEnum::ArrayType(_) => {
                         todo!()
                     }
-                    MLValueType::Pointer(_) => {
+                    AnyTypeEnum::FloatType(ty) => {
+                        let t = self.builder.build_float_cast(f, ty, "float_cast");
+                        t.as_any_value_enum()
+                    }
+                    AnyTypeEnum::FunctionType(_) => {
                         todo!()
                     }
-                    MLValueType::Reference(_) => {
+                    AnyTypeEnum::IntType(ty) => if is_signed {
+                        self.builder
+                            .build_float_to_signed_int(f, ty, "float_to_int")
+                    } else {
+                        self.builder
+                            .build_float_to_unsigned_int(f, ty, "float_to_uint")
+                    }
+                    .as_any_value_enum(),
+                    AnyTypeEnum::PointerType(_) => {
                         todo!()
                     }
-                    MLValueType::Array(_, _) => {
+                    AnyTypeEnum::StructType(_) => {
                         todo!()
                     }
-                };
-                let t = self.builder.build_float_cast(f, ty, "float_cast");
-                t.as_any_value_enum()
+                    AnyTypeEnum::VectorType(_) => {
+                        todo!()
+                    }
+                    AnyTypeEnum::VoidType(_) => {
+                        todo!()
+                    }
+                }
             }
             // AnyValueEnum::PhiValue(_) => {}
             // AnyValueEnum::FunctionValue(_) => {}
-            // AnyValueEnum::PointerValue(_) => {}
+            AnyValueEnum::PointerValue(ptr) => {
+                let ty = self.ml_type_to_type(t.type_);
+                match ty {
+                    AnyTypeEnum::ArrayType(_) => {
+                        todo!()
+                    }
+                    AnyTypeEnum::FloatType(_) => {
+                        todo!()
+                    }
+                    AnyTypeEnum::FunctionType(_) => {
+                        todo!()
+                    }
+                    AnyTypeEnum::IntType(ty) => {
+                        let t = self.builder.build_ptr_to_int(ptr, ty, "ptr_to_int");
+                        t.as_any_value_enum()
+                    }
+                    AnyTypeEnum::PointerType(ty) => {
+                        let t = self.builder.build_pointer_cast(ptr, ty, "ptr_cast");
+                        t.as_any_value_enum()
+                    }
+                    AnyTypeEnum::StructType(_) => {
+                        todo!()
+                    }
+                    AnyTypeEnum::VectorType(_) => {
+                        todo!()
+                    }
+                    AnyTypeEnum::VoidType(_) => {
+                        todo!()
+                    }
+                }
+            }
             // AnyValueEnum::StructValue(_) => {}
             // AnyValueEnum::VectorValue(_) => {}
             // AnyValueEnum::InstructionValue(_) => {}
@@ -758,13 +836,35 @@ impl<'ctx> CodeGen<'ctx> {
 
     pub fn decl(&mut self, d: MLDecl) -> AnyValueEnum<'ctx> {
         match d {
-            MLDecl::Var(v) => self.var(v),
+            MLDecl::Var(v) => self.global_var(v),
             MLDecl::Fun(f) => self.fun(f),
             MLDecl::Struct(s) => self.struct_(s),
         }
     }
 
-    pub fn var(&mut self, v: MLVar) -> AnyValueEnum<'ctx> {
+    fn global_var(&mut self, v: MLVar) -> AnyValueEnum<'ctx> {
+        let MLVar {
+            is_mute,
+            name,
+            type_,
+            value,
+        } = v;
+        let ty = self.ml_type_to_type(type_.into_value_type());
+        let ty = BasicTypeEnum::try_from(ty).unwrap();
+        let v = self.module.add_global(ty, None, &*name);
+        let value = self.expr(value);
+        let value = BasicValueEnum::try_from(value).unwrap();
+        v.set_initializer(&value);
+        if is_mute {
+            v.set_constant(false)
+        } else {
+            v.set_constant(true)
+        };
+        self.set_to_environment(name, v.as_any_value_enum());
+        v.as_any_value_enum()
+    }
+
+    pub fn local_var(&mut self, v: MLVar) -> AnyValueEnum<'ctx> {
         let MLVar {
             is_mute,
             name,
@@ -805,10 +905,7 @@ impl<'ctx> CodeGen<'ctx> {
                 self.set_to_environment(name, ptr.as_any_value_enum());
                 self.builder.build_store(ptr, a).as_any_value_enum()
             }
-            t => {
-                eprintln!("undefined root executed {:?}", t);
-                exit(-14)
-            }
+            t => panic!("undefined root executed {:?}", t),
         }
     }
 
@@ -821,7 +918,7 @@ impl<'ctx> CodeGen<'ctx> {
             body,
         } = f;
         let return_type = self.ml_type_to_type(return_type);
-        let args: Vec<BasicTypeEnum<'ctx>> = arg_defs
+        let args: Vec<_> = arg_defs
             .iter()
             .map(|a| {
                 let a = a.type_.clone();
@@ -835,6 +932,7 @@ impl<'ctx> CodeGen<'ctx> {
             })
             .map(|a| BasicTypeEnum::try_from(a).unwrap())
             .collect();
+        let args: Vec<BasicMetadataTypeEnum> = args.into_iter().map(|i| i.into()).collect();
         let result = if let Some(body) = body {
             self.ml_context.push_environment();
             let is_void_type = return_type.is_void_type();
@@ -847,9 +945,8 @@ impl<'ctx> CodeGen<'ctx> {
                 AnyTypeEnum::StructType(struct_type) => struct_type.fn_type(&args, false),
                 // AnyTypeEnum::VectorType(_) => {}
                 AnyTypeEnum::VoidType(void_type) => void_type.fn_type(&args, false),
-                _ => {
-                    println!("Return Type Error.");
-                    exit(-1)
+                a => {
+                    panic!("Return Type Error. {:?}", a);
                 }
             };
             let function = if let Some(function) = self.module.get_function(&*name) {
@@ -884,10 +981,7 @@ impl<'ctx> CodeGen<'ctx> {
                 AnyTypeEnum::StructType(struct_type) => struct_type.fn_type(&args, false),
                 // AnyTypeEnum::VectorType(_) => {}
                 AnyTypeEnum::VoidType(void_type) => void_type.fn_type(&args, false),
-                _ => {
-                    println!("Return type Error");
-                    exit(-1)
-                }
+                a => panic!("Return type Error. {:?}", a),
             };
             let f = if let Some(f) = self.module.get_function(&*name) {
                 f
@@ -903,7 +997,7 @@ impl<'ctx> CodeGen<'ctx> {
     pub fn struct_(&mut self, s: MLStruct) -> AnyValueEnum<'ctx> {
         self.ml_context.put_struct(s.clone());
         let struct_ = self.module.get_struct_type(&*s.name).unwrap();
-        let struct_fields: Vec<BasicTypeEnum<'ctx>> = s
+        let struct_fields: Vec<_> = s
             .fields
             .into_iter()
             .map(|f| {
@@ -918,7 +1012,7 @@ impl<'ctx> CodeGen<'ctx> {
     pub fn stmt(&mut self, s: MLStmt) -> AnyValueEnum<'ctx> {
         match s {
             MLStmt::Expr(expr) => self.expr(expr),
-            MLStmt::Var(decl) => self.var(decl),
+            MLStmt::Var(decl) => self.local_var(decl),
             MLStmt::Assignment(a) => self.assignment_stmt(a),
             MLStmt::Loop(l) => self.loop_stmt(l),
             MLStmt::Return(r) => self.return_expr(r),
@@ -926,46 +1020,32 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     pub fn assignment_stmt(&mut self, assignment: MLAssignmentStmt) -> AnyValueEnum<'ctx> {
-        // TODO: replace to ↓
-        // let a_type = assignment.value.type_().into_value_type();
-        let a_type = assignment.target.type_().into_value_type();
+        let a_type = assignment.value.type_().into_value_type();
         let value = self.expr(assignment.value);
         let value = self.load_if_pointer_value(value, &a_type);
         match value {
             AnyValueEnum::IntValue(i) => {
-                let target = self.expr(assignment.target);
-                if let AnyValueEnum::PointerValue(p) = target {
-                    return AnyValueEnum::from(self.builder.build_store(p, i));
-                }
-                exit(-3)
+                let p = self.expr(assignment.target).into_pointer_value();
+                AnyValueEnum::from(self.builder.build_store(p, i))
             }
             AnyValueEnum::FloatValue(f) => {
-                let target = self.expr(assignment.target);
-                if let AnyValueEnum::PointerValue(p) = target {
-                    return AnyValueEnum::from(self.builder.build_store(p, f));
-                }
-                exit(-3)
+                let p = self.expr(assignment.target).into_pointer_value();
+                AnyValueEnum::from(self.builder.build_store(p, f))
             }
             // AnyValueEnum::PhiValue(_) => {}
             // AnyValueEnum::ArrayValue(_) => {}
             // AnyValueEnum::FunctionValue(_) => {}
             AnyValueEnum::PointerValue(s) => {
-                let target = self.expr(assignment.target);
-                if let AnyValueEnum::PointerValue(p) = target {
-                    return AnyValueEnum::from(self.builder.build_store(p, s));
-                }
-                exit(-3)
+                let p = self.expr(assignment.target).into_pointer_value();
+                AnyValueEnum::from(self.builder.build_store(p, s))
             }
             AnyValueEnum::StructValue(s) => {
-                let target = self.expr(assignment.target);
-                if let AnyValueEnum::PointerValue(p) = target {
-                    return AnyValueEnum::from(self.builder.build_store(p, s));
-                }
-                exit(-3)
+                let p = self.expr(assignment.target).into_pointer_value();
+                AnyValueEnum::from(self.builder.build_store(p, s))
             }
             // AnyValueEnum::VectorValue(_) => {}
             // AnyValueEnum::InstructionValue(_) => {}
-            _ => exit(-3),
+            v => panic!("Can not assinable {:?}", v),
         }
     }
 
@@ -1003,11 +1083,8 @@ impl<'ctx> CodeGen<'ctx> {
     pub fn file(&mut self, f: MLFile) {
         // detect type
         for d in f.body.iter() {
-            match d {
-                MLDecl::Struct(s) => {
-                    self.context.opaque_struct_type(&*s.name);
-                }
-                _ => { /* do noting */ }
+            if let MLDecl::Struct(s) = d {
+                self.context.opaque_struct_type(&*s.name);
             }
         }
         for d in f.body {
@@ -1048,10 +1125,7 @@ impl<'ctx> CodeGen<'ctx> {
                 MLPrimitiveType::String => {
                     AnyTypeEnum::from(self.context.i8_type().ptr_type(AddressSpace::Generic))
                 }
-                t => {
-                    eprintln!("Invalid Primitive Type {:?}", t);
-                    exit(-1)
-                }
+                t => panic!("Invalid Primitive Type {:?}", t),
             },
             MLValueType::Struct(t) => AnyTypeEnum::from(self.module.get_struct_type(&*t).unwrap()),
             MLValueType::Pointer(p) | MLValueType::Reference(p) => match *p {

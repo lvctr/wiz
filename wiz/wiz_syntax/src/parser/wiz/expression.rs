@@ -327,8 +327,8 @@ where
         return_expr,
         if_expr,
         array_expr,
-        name_expr,
         literal_expr,
+        name_expr,
         parenthesized_expr,
     ))(s)
 }
@@ -911,9 +911,14 @@ where
     <I as InputIter>::Item: AsChar + Copy,
     <I as InputTakeAtPosition>::Item: AsChar,
 {
-    map(tuple((char('{'), stmts, char('}'))), |(_, stms, _)| {
-        LambdaSyntax { stmts: stms }
-    })(s)
+    map(
+        tuple((char('{'), stmts, char('}'))),
+        |(open, stms, close)| LambdaSyntax {
+            open: TokenSyntax::from(open),
+            stmts: stms,
+            close: TokenSyntax::from(close),
+        },
+    )(s)
 }
 
 pub fn label<I>(s: I) -> IResult<I, char>
@@ -1297,7 +1302,8 @@ mod tests {
     use crate::parser::wiz::expression::{
         array_expr, boolean_literal, conjunction_expr, disjunction_expr, equality_expr, expr,
         floating_point_literal, if_expr, indexing_suffix, integer_literal, literal_expr, name_expr,
-        postfix_suffix, raw_string_literal, return_expr, string_literal, value_arguments,
+        postfix_suffix, primary_expr, raw_string_literal, return_expr, string_literal,
+        value_arguments,
     };
     use crate::syntax::block::BlockSyntax;
     use crate::syntax::declaration::Decl;
@@ -1515,6 +1521,17 @@ mod tests {
                 })
             ))
         );
+    }
+
+    #[test]
+    fn test_primary_expr() {
+        assert_eq!(
+            primary_expr("false"),
+            Ok((
+                "",
+                Expr::Literal(LiteralSyntax::Boolean(TokenSyntax::from("false")))
+            ))
+        )
     }
 
     #[test]
