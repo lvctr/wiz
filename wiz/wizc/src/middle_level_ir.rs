@@ -1,7 +1,8 @@
 use crate::constants;
 use crate::high_level_ir::typed_annotation::TypedAnnotations;
 use crate::high_level_ir::typed_decl::{
-    TypedArgDef, TypedDecl, TypedFun, TypedFunBody, TypedMemberFunction, TypedStruct, TypedVar,
+    TypedArgDef, TypedDecl, TypedExtension, TypedFun, TypedFunBody, TypedMemberFunction,
+    TypedProtocol, TypedStruct, TypedVar,
 };
 use crate::high_level_ir::typed_expr::{
     TypedArray, TypedBinOp, TypedBinaryOperator, TypedCall, TypedCallArg, TypedExpr, TypedIf,
@@ -277,24 +278,16 @@ impl HLIR2MLIR {
                 TypedDecl::Var(v) => {
                     vec![MLStmt::Var(self.var(v))]
                 }
-                TypedDecl::Fun(_) => {
-                    todo!("local function")
-                }
-                TypedDecl::Struct(_) => {
-                    todo!("local struct")
-                }
+                TypedDecl::Fun(_) => todo!("local function"),
+                TypedDecl::Struct(_) => todo!("local struct"),
                 TypedDecl::Class => {
                     todo!()
                 }
                 TypedDecl::Enum => {
                     todo!()
                 }
-                TypedDecl::Protocol => {
-                    todo!()
-                }
-                TypedDecl::Extension => {
-                    todo!()
-                }
+                TypedDecl::Protocol(_) => todo!("local protocol"),
+                TypedDecl::Extension(_) => todo!("local extension"),
             },
             TypedStmt::Assignment(a) => vec![MLStmt::Assignment(self.assignment(a))],
             TypedStmt::Loop(l) => vec![MLStmt::Loop(self.loop_stmt(l))],
@@ -358,8 +351,18 @@ impl HLIR2MLIR {
             }
             TypedDecl::Class => todo!(),
             TypedDecl::Enum => todo!(),
-            TypedDecl::Protocol => todo!(),
-            TypedDecl::Extension => todo!(),
+            TypedDecl::Protocol(p) => {
+                let functions = self.protocol(p);
+                for f in functions {
+                    self.module._add_function(FunBuilder::from(f));
+                }
+            }
+            TypedDecl::Extension(e) => {
+                let functions = self.extension(e);
+                for f in functions {
+                    self.module._add_function(FunBuilder::from(f));
+                }
+            }
         };
         Ok(())
     }
@@ -381,6 +384,7 @@ impl HLIR2MLIR {
             modifiers,
             name,
             type_params,
+            type_constraints,
             arg_defs,
             body,
             return_type,
@@ -499,6 +503,48 @@ impl HLIR2MLIR {
             })
             .collect();
         (struct_, init.into_iter().chain(members).collect())
+    }
+
+    fn extension(&mut self, e: TypedExtension) -> Vec<MLFun> {
+        let TypedExtension {
+            annotations,
+            name,
+            protocol: type_params,
+            computed_properties,
+            member_functions,
+        } = e;
+        member_functions
+            .into_iter()
+            .map(|mf| {
+                let TypedMemberFunction {
+                    name: fname,
+                    arg_defs: args,
+                    type_params,
+                    body,
+                    return_type,
+                } = mf;
+                let fun_arg_label_type_mangled_name = self.fun_arg_label_type_name_mangling(&args);
+                let args = args.into_iter().map(|a| self.arg_def(a)).collect();
+                MLFun {
+                    modifiers: vec![],
+                    name: self.package_name_mangling(&name.package(), &name.name())
+                        + "::"
+                        + &fname
+                        + &*if fun_arg_label_type_mangled_name.is_empty() {
+                            String::new()
+                        } else {
+                            String::from("##") + &*fun_arg_label_type_mangled_name
+                        },
+                    arg_defs: args,
+                    return_type: self.type_(return_type.unwrap()).into_value_type(),
+                    body: body.map(|body| self.fun_body(body)),
+                }
+            })
+            .collect()
+    }
+
+    fn protocol(&mut self, p: TypedProtocol) -> Vec<MLFun> {
+        vec![]
     }
 
     fn expr(&mut self, e: TypedExpr) -> MLExpr {
@@ -648,7 +694,7 @@ impl HLIR2MLIR {
                 },
                 t => panic!("function pointer detected. {:?}", t),
             }
-        } else if t.is_string() {
+        } else if t.is_string() || t.is_string_ref() {
             MLExpr::PrimitiveSubscript(MLSubscript {
                 target: Box::new(self.expr(*s.target)),
                 index: Box::new(self.expr(s.indexes[0].clone())),

@@ -4,6 +4,7 @@ use crate::high_level_ir::typed_stmt::TypedBlock;
 use crate::high_level_ir::typed_type::{
     TypedArgType, TypedFunctionType, TypedPackage, TypedType, TypedTypeParam,
 };
+use crate::high_level_ir::typed_type_constraint::TypedTypeConstraint;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum TypedDecl {
@@ -12,8 +13,8 @@ pub enum TypedDecl {
     Struct(TypedStruct),
     Class,
     Enum,
-    Protocol,
-    Extension,
+    Protocol(TypedProtocol),
+    Extension(TypedExtension),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -33,6 +34,7 @@ pub struct TypedFun {
     pub(crate) modifiers: Vec<String>,
     pub(crate) name: String,
     pub(crate) type_params: Option<Vec<TypedTypeParam>>,
+    pub(crate) type_constraints: Option<Vec<TypedTypeConstraint>>,
     pub(crate) arg_defs: Vec<TypedArgDef>,
     pub(crate) body: Option<TypedFunBody>,
     pub(crate) return_type: Option<TypedType>,
@@ -97,6 +99,25 @@ pub struct TypedMemberFunction {
     pub(crate) arg_defs: Vec<TypedArgDef>,
     pub(crate) body: Option<TypedFunBody>,
     pub(crate) return_type: Option<TypedType>,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct TypedExtension {
+    pub(crate) annotations: TypedAnnotations,
+    pub(crate) name: TypedType,
+    pub(crate) protocol: Option<TypedType>,
+    pub(crate) computed_properties: Vec<TypedComputedProperty>,
+    pub(crate) member_functions: Vec<TypedMemberFunction>,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct TypedProtocol {
+    pub(crate) annotations: TypedAnnotations,
+    pub(crate) package: TypedPackage,
+    pub(crate) name: String,
+    pub(crate) type_params: Option<Vec<TypedTypeParam>>,
+    pub(crate) computed_properties: Vec<TypedComputedProperty>,
+    pub(crate) member_functions: Vec<TypedMemberFunction>,
 }
 
 impl TypedFun {
